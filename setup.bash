@@ -971,6 +971,11 @@ ensure_env() {
     [ -n "${gid}" ] && upsert_env_var HOST_GID_DIALOUT "${gid}"
     gid="$(getent group input | cut -d: -f3)"
     [ -n "${gid}" ] && upsert_env_var HOST_GID_INPUT "${gid}"
+    gid="$(getent group video | cut -d: -f3)"
+    [ -n "${gid}" ] && upsert_env_var HOST_GID_VIDEO "${gid}"
+    gid="$(getent group render | cut -d: -f3)"
+    [ -n "${gid}" ] && upsert_env_var HOST_GID_RENDER "${gid}"
+
     log "${OK} Set host UID/GID + dialout/input GID in .env"
 }
 
