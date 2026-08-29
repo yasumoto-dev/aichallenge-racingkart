@@ -41,6 +41,8 @@ x-autoware-base: &autoware-base
   group_add:
     # Read /dev/input/event* (joy_node/SDL2) as non-root user. GID from host `input` group.
     - "${HOST_GID_INPUT:-104}"
+    - "${HOST_GID_VIDEO:-44}"
+    - "${HOST_GID_RENDER:-110}"
   working_dir: /aichallenge
 
 x-autoware-rosbag-base: &autoware-rosbag-base
@@ -93,6 +95,8 @@ x-racing_kart_interface-base: &racing_kart_interface-base
     - /dev/dri
   group_add:
     - "${HOST_GID_DIALOUT:-20}"
+    - "${HOST_GID_VIDEO:-44}"
+    - "${HOST_GID_RENDER:-110}"
   working_dir: /workspace
 
 services:
