@@ -16,7 +16,7 @@
     <param name="max_acceleration" value="3.0"/>
 
     <remap from="input/kinematics" to="/localization/kinematic_state"/>
-    <remap from="input/trajectory" to="/planning/scenario_planning/trajectory"/>
+    <remap from="input/trajectory" to="/planning/scenario_planning/trajectory_avoided"/>
     <remap from="output/control_cmd" to="/control/command/control_cmd"/>
   </node>
 </launch>
