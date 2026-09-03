@@ -28,11 +28,12 @@ class SimplePurePursuit : public rclcpp::Node {
   // subscribers
   rclcpp::Subscription<Odometry>::SharedPtr sub_kinematics_;
   rclcpp::Subscription<Trajectory>::SharedPtr sub_trajectory_;
-  
+  rclcpp::Subscription<Trajectory>::SharedPtr sub_trajectory_avoidance_;
+
   // publishers
   rclcpp::Publisher<AckermannControlCommand>::SharedPtr pub_cmd_;
   rclcpp::Publisher<AckermannControlCommand>::SharedPtr pub_raw_cmd_;
-  rclcpp::Publisher<PointStamped>::SharedPtr pub_lookahead_point_;  
+  rclcpp::Publisher<PointStamped>::SharedPtr pub_lookahead_point_;
 
   // timer
   rclcpp::TimerBase::SharedPtr timer_;
@@ -41,7 +42,11 @@ class SimplePurePursuit : public rclcpp::Node {
   Trajectory::SharedPtr trajectory_;
   Odometry::SharedPtr odometry_;
 
-
+  // Avoidance overlay: published only while frenet_optimal_trajectory_node
+  // has a valid avoidance path, so its absence for avoidance_timeout_
+  // seconds means "no avoidance needed" and we fall back to trajectory_.
+  Trajectory::SharedPtr trajectory_avoidance_;
+  rclcpp::Time last_avoidance_stamp_;
 
   // pure pursuit parameters
   const double wheel_base_;
@@ -52,6 +57,7 @@ class SimplePurePursuit : public rclcpp::Node {
   const double external_target_vel_;
   const double steering_tire_angle_gain_;
   const double max_acceleration_;
+  const double avoidance_timeout_;
 
 
  private:

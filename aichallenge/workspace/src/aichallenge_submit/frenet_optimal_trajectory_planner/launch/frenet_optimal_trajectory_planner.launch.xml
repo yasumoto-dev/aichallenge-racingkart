@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <arg name="input_trajectory_topic" default="/planning/scenario_planning/trajectory"/>
+  <arg name="input_v2x_topic" default="/v2x/vehicle_positions"/>
+  <arg name="input_kinematics_topic" default="/localization/kinematic_state"/>
+  <arg name="output_trajectory_avoidance_topic" default="/planning/scenario_planning/trajectory_avoidance"/>
+
+  <node pkg="frenet_optimal_trajectory_planner" exec="frenet_optimal_trajectory_node.py"
+        name="frenet_optimal_trajectory_node" output="screen">
+    <!-- Detect early enough that the lateral maneuver (mint..maxt below)
+         has room to ramp up smoothly before the obstacle is reached,
+         instead of a late, sharp swerve. -->
+    <param name="avoid_distance_threshold" value="15.0"/>
+    <!-- Other vehicle's own half-width (~0.65m, racing_kart_description)
+         plus a small margin, not a second full-width inflation. -->
+    <param name="obstacle_clearance" value="0.6"/>
+    <!-- Must comfortably exceed maxt * (max_speed + d_t_s*n_s_sample) below
+         (5.0 * 16.0 = 80m), otherwise long/fast candidates need spline
+         points beyond what's supplied and get extrapolated: a likely
+         contributor to a bad path seen at a hairpin turn. -->
+    <param name="waypoint_lookahead_distance" value="32.0"/>
+    <param name="waypoint_lookbehind_points" value="5"/>
+    <!-- Reject a candidate whose first point isn't within this distance of
+         the ego's actual position (safety net against a bad local spline
+         fit / Frenet projection). -->
+    <param name="max_start_position_error" value="2.0"/>
+
+    <param name="max_speed" value="15.0"/>
+    <param name="max_accel" value="5.0"/>
+    <!-- tan(max_steer_angle 0.64 rad) / wheel_base 1.087 m, from
+         racing_kart_description/config/vehicle_info.param.yaml -->
+    <param name="max_curvature" value="0.7"/>
+    <!-- This hyperparameter has no notion of track boundary: the planner
+         will happily use the full width if an obstacle seems to demand it,
+         so keep it conservative until it can be checked against real
+         per-point track width (a wider value let a candidate swing off the
+         track at a hairpin turn during testing). A single obstacle needing
+         more room than this simply won't find a feasible avoidance path
+         (falls back to the reference trajectory) rather than swerving too
+         far: prefer that over risking going off-track. -->
+    <param name="max_road_width_l" value="1.5"/>
+    <param name="max_road_width_r" value="1.5"/>
+    <param name="d_road_w" value="0.5"/>
+    <param name="dt" value="0.1"/>
+    <!-- Upper bound on how long/far a single maneuver may run (maxt * a
+         sampled speed, up to ~32m at max_speed). Kept separate from
+         avoid_distance_threshold on purpose: that controls how early we
+         *notice* an obstacle, this controls how far a chosen maneuver is
+         allowed to *reach*. A longer maxt (5.0, tried earlier) let the
+         low kv/kt cost weights below pick a ~80m, multi-corner "smooth"
+         detour that actually snaked into an unrelated hairpin further
+         down the track; even 3.0/1.5 (~48m) was judged still a bit long.
+         Shortening maxt keeps a maneuver local to the obstacle that
+         triggered it regardless of how early it was seen. -->
+    <param name="maxt" value="1.0"/>
+    <param name="mint" value="0.5"/>
+    <param name="d_t_s" value="1.0"/>
+    <param name="n_s_sample" value="1.0"/>
+    <param name="kd" value="1.0"/>
+    <!-- Low lateral-velocity cost (matches upstream demo's kv=0.1) so the
+         planner isn't penalized for starting the lateral shift promptly. -->
+    <param name="kv" value="0.1"/>
+    <param name="ka" value="0.1"/>
+    <param name="kj" value="0.1"/>
+    <param name="kt" value="0.1"/>
+    <param name="ko" value="0.5"/>
+    <param name="klat" value="1.0"/>
+    <param name="klon" value="1.0"/>
+    <param name="num_threads" value="0"/>
+
+    <remap from="input/trajectory" to="$(var input_trajectory_topic)"/>
+    <remap from="input/v2x_vehicle_positions" to="$(var input_v2x_topic)"/>
+    <remap from="input/kinematics" to="$(var input_kinematics_topic)"/>
+    <remap from="output/trajectory_avoidance" to="$(var output_trajectory_avoidance_topic)"/>
+  </node>
+</launch>

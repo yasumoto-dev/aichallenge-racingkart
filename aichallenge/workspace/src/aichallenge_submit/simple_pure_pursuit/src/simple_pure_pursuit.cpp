@@ -24,7 +24,8 @@ SimplePurePursuit::SimplePurePursuit()
   use_external_target_vel_(declare_parameter<bool>("use_external_target_vel", false)),
   external_target_vel_(declare_parameter<float>("external_target_vel", 0.0)),
   steering_tire_angle_gain_(declare_parameter<float>("steering_tire_angle_gain", 1.0)),
-  max_acceleration_(declare_parameter<float>("max_acceleration", 3.0))
+  max_acceleration_(declare_parameter<float>("max_acceleration", 3.0)),
+  avoidance_timeout_(declare_parameter<double>("avoidance_timeout", 0.3))
 {
   pub_cmd_ = create_publisher<AckermannControlCommand>("output/control_cmd", 1);
   pub_raw_cmd_ = create_publisher<AckermannControlCommand>("output/raw_control_cmd", 1);
@@ -35,6 +36,12 @@ SimplePurePursuit::SimplePurePursuit()
     "input/kinematics", bv_qos, [this](const Odometry::SharedPtr msg) { odometry_ = msg; });
   sub_trajectory_ = create_subscription<Trajectory>(
     "input/trajectory", bv_qos, [this](const Trajectory::SharedPtr msg) { trajectory_ = msg; });
+  sub_trajectory_avoidance_ = create_subscription<Trajectory>(
+    "input/trajectory_avoidance", bv_qos,
+    [this](const Trajectory::SharedPtr msg) {
+      trajectory_avoidance_ = msg;
+      last_avoidance_stamp_ = get_clock()->now();
+    });
 
   using namespace std::literals::chrono_literals;
   timer_ = create_wall_timer(10ms, std::bind(&SimplePurePursuit::onTimer, this));
@@ -59,14 +66,23 @@ void SimplePurePursuit::onTimer()
     return;
   }
 
+  // Follow the avoidance overlay only while frenet_optimal_trajectory_node
+  // is actively publishing one; otherwise fall back to the untouched
+  // reference trajectory (see simple_pure_pursuit.hpp for rationale).
+  const bool avoidance_active =
+    trajectory_avoidance_ && !trajectory_avoidance_->points.empty() &&
+    (get_clock()->now() - last_avoidance_stamp_).seconds() < avoidance_timeout_;
+  const Trajectory & active_trajectory =
+    avoidance_active ? *trajectory_avoidance_ : *trajectory_;
+
   size_t closet_traj_point_idx =
-    findNearestIndex(trajectory_->points, odometry_->pose.pose.position);
+    findNearestIndex(active_trajectory.points, odometry_->pose.pose.position);
 
   // publish zero command
   AckermannControlCommand cmd = zeroAckermannControlCommand(get_clock()->now());
 
   // get closest trajectory point from current position
-  TrajectoryPoint closet_traj_point = trajectory_->points.at(closet_traj_point_idx);
+  TrajectoryPoint closet_traj_point = active_trajectory.points.at(closet_traj_point_idx);
 
   // calc longitudinal speed and acceleration
   double target_longitudinal_vel =
@@ -88,11 +104,17 @@ void SimplePurePursuit::onTimer()
                   wheel_base_ / 2.0 * std::sin(odometry_->pose.pose.orientation.z);
   //// search lookahead point
   auto lookahead_point_itr = std::find_if(
-    trajectory_->points.begin() + closet_traj_point_idx, trajectory_->points.end(),
+    active_trajectory.points.begin() + closet_traj_point_idx, active_trajectory.points.end(),
     [&](const TrajectoryPoint & point) {
       return std::hypot(point.pose.position.x - rear_x, point.pose.position.y - rear_y) >=
              lookahead_distance;
     });
+  // The avoidance overlay only spans a short local horizon, so unlike the
+  // full reference trajectory it can end before the lookahead distance is
+  // reached; fall back to its last point instead of dereferencing end().
+  if (lookahead_point_itr == active_trajectory.points.end()) {
+    lookahead_point_itr = std::prev(active_trajectory.points.end());
+  }
   double lookahead_point_x = lookahead_point_itr->pose.position.x;
   double lookahead_point_y = lookahead_point_itr->pose.position.y;
 

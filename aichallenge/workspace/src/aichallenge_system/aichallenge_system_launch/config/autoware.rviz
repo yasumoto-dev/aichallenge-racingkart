@@ -447,6 +447,47 @@ Visualization Manager:
             Constant Color: true
             Scale: 0.8999999761581421
             Value: false
+        - Class: rviz_plugins/Trajectory
+          Color Border Vel Max: 3
+          Enabled: true
+          Name: AvoidanceTrajectory
+          Topic:
+            Depth: 1
+            Durability Policy: Volatile
+            Filter size: 1
+            History Policy: Keep Last
+            Reliability Policy: Best Effort
+            Value: /planning/scenario_planning/trajectory_avoidance
+          Value: true
+          View Footprint:
+            Alpha: 1
+            Color: 230; 230; 50
+            Offset from BaseLink: 0
+            Rear Overhang: 1.0299999713897705
+            Value: false
+            Vehicle Length: 4.769999980926514
+            Vehicle Width: 1.8300000429153442
+          View Path:
+            Alpha: 0.9990000128746033
+            Color: 255; 0; 0
+            Constant Color: false
+            Value: true
+            Width: 0.5
+          View Point:
+            Alpha: 0.9990000128746033
+            Color: 255; 0; 255
+            Offset: 0
+            Radius: 0.20000000298023224
+            Value: true
+          View Text Velocity:
+            Scale: 0.20000000298023224
+            Value: true
+          View Velocity:
+            Alpha: 0.9990000128746033
+            Color: 255; 255; 255
+            Constant Color: true
+            Scale: 0.8999999761581421
+            Value: false
       Enabled: true
       Name: Planning
     - Class: rviz_common/Group

@@ -14,9 +14,11 @@
     <param name="speed_proportional_gain" value="1.0"/>
     <param name="steering_tire_angle_gain" value="$(var steering_tire_angle_gain_var)"/>
     <param name="max_acceleration" value="3.0"/>
+    <param name="avoidance_timeout" value="0.3"/>
 
     <remap from="input/kinematics" to="/localization/kinematic_state"/>
-    <remap from="input/trajectory" to="/planning/scenario_planning/trajectory_avoided"/>
+    <remap from="input/trajectory" to="/planning/scenario_planning/trajectory"/>
+    <remap from="input/trajectory_avoidance" to="/planning/scenario_planning/trajectory_avoidance"/>
     <remap from="output/control_cmd" to="/control/command/control_cmd"/>
   </node>
 </launch>
