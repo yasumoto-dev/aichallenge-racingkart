@@ -23,6 +23,10 @@ x-autoware-base: &autoware-base
     - HOST_GID=${HOST_GID:-}
     - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-1}
     - LOG_DIR=${LOG_DIR:-}
+    # Makefile の SLOW_VEHICLE_DOMAIN で特定ドメインだけ上書きされる。
+    # pure_pursuit.launch.xml が $(env ...) で読む。
+    - USE_EXTERNAL_TARGET_VEL=${USE_EXTERNAL_TARGET_VEL:-false}
+    - EXTERNAL_TARGET_VEL=${EXTERNAL_TARGET_VEL:-0.0}
   volumes:
     - ./output:${OUTPUT_ROOT:-/output}
     - ./aichallenge:/aichallenge

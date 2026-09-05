@@ -78,10 +78,22 @@ zenoh:
 dev: SIM_MODE := dev
 dev: simulator autoware-simulator
 
+# 特定ドメインの車両だけ速度を落として実験したい場合に指定する(未指定なら今まで通り)。
+# 例: make dev2 SLOW_VEHICLE_DOMAIN=2 SLOW_VEHICLE_TARGET_VEL=2.78
+SLOW_VEHICLE_DOMAIN ?=
+SLOW_VEHICLE_TARGET_VEL ?= 2.78
+
 # dev<N>: N台並列（autoware を compose -p 1..N / ROS_DOMAIN_ID=1..N で起動）
 $(addprefix dev,$(DEV_NS)): dev%:
 	@$(MAKE) simulator SIM_MODE=$@ LOG_DIR=$(LOG_DIR)
-	@for p in $$(seq 1 $*); do LOG_DIR=$(LOG_DIR) ROS_DOMAIN_ID=$$p docker compose -p $$p up -d autoware; done
+	@for p in $$(seq 1 $*); do \
+	  if [ "$$p" = "$(SLOW_VEHICLE_DOMAIN)" ]; then \
+	    USE_EXTERNAL_TARGET_VEL=true EXTERNAL_TARGET_VEL=$(SLOW_VEHICLE_TARGET_VEL) \
+	      LOG_DIR=$(LOG_DIR) ROS_DOMAIN_ID=$$p docker compose -p $$p up -d autoware; \
+	  else \
+	    LOG_DIR=$(LOG_DIR) ROS_DOMAIN_ID=$$p docker compose -p $$p up -d autoware; \
+	  fi; \
+	done
 
 # e2e は練習兼提出参考モード（e2e.sh）。e2e-final.sh は make simulator-e2e-final。
 e2e: SIM_MODE := e2e

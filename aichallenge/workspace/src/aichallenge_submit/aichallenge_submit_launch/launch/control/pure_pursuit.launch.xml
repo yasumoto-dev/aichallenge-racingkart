@@ -7,8 +7,10 @@
   <let name="steering_tire_angle_gain_var" value="1.639" unless="$(var simulation)"/>
 
   <node pkg="simple_pure_pursuit" exec="simple_pure_pursuit" name="simple_pure_pursuit_node" output="screen">
-    <param name="use_external_target_vel" value="false"/>
-    <param name="external_target_vel" value="10.0"/>
+    <!-- 通常は false。make dev2 SLOW_VEHICLE_DOMAIN=2 のように指定すると、
+         そのドメインのコンテナだけ環境変数が true / 目標速度[m/s] で渡る -->
+    <param name="use_external_target_vel" value="$(env USE_EXTERNAL_TARGET_VEL false)"/>
+    <param name="external_target_vel" value="$(env EXTERNAL_TARGET_VEL 10.0)"/>
     <param name="lookahead_gain" value="0.5"/>
     <param name="lookahead_min_distance" value="1.0"/>
     <param name="speed_proportional_gain" value="1.0"/>
