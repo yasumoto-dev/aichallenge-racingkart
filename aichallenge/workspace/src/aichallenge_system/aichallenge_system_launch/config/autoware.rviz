@@ -461,7 +461,7 @@ Visualization Manager:
           Value: true
           View Footprint:
             Alpha: 1
-            Color: 230; 230; 50
+            Color: 230; 0; 0
             Offset from BaseLink: 0
             Rear Overhang: 1.0299999713897705
             Value: false
@@ -469,13 +469,13 @@ Visualization Manager:
             Vehicle Width: 1.8300000429153442
           View Path:
             Alpha: 0.9990000128746033
-            Color: 255; 0; 0
-            Constant Color: false
-            Value: true
+            Color: 0; 150; 255
+            Constant Color: true 
+            Value: true 
             Width: 0.5
           View Point:
             Alpha: 0.9990000128746033
-            Color: 255; 0; 255
+            Color: 140; 235; 255
             Offset: 0
             Radius: 0.20000000298023224
             Value: true
