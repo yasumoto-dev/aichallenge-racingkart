@@ -5,7 +5,7 @@
   <description>
     Frenet Optimal Trajectory local planner that overlays an avoidance path
     on top of the reference trajectory, built on the erdos-project
-    frenet_optimal_trajectory_planner C++ core (vendored under thirdparty/).
+    frenet_optimal_trajectory_planner C++ core (vendored under src/).
   </description>
   <maintainer email="yasumoto.ryo01@gmail.com">yasumoto-dev</maintainer>
   <license>Apache-2.0</license>
@@ -15,6 +15,8 @@
 
   <depend>eigen</depend>
   <depend>rclpy</depend>
+  <depend>python3-numpy</depend>
+  <depend>ament_index_python</depend>
   <depend>autoware_auto_planning_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>v2x_msgs</depend>

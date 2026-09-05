@@ -4,61 +4,55 @@
   <arg name="input_v2x_topic" default="/v2x/vehicle_positions"/>
   <arg name="input_kinematics_topic" default="/localization/kinematic_state"/>
   <arg name="output_trajectory_avoidance_topic" default="/planning/scenario_planning/trajectory_avoidance"/>
+  <!-- reference.launch.xml と同じ規約。citycircuit は data/、kashiwanoha は data/kashiwanoha/ -->
+  <arg name="track_subdir" default=""/>
+  <arg name="track_width_csv"
+       default="$(find-pkg-share frenet_optimal_trajectory_planner)/data/$(var track_subdir)track_width.csv"/>
 
   <node pkg="frenet_optimal_trajectory_planner" exec="frenet_optimal_trajectory_node.py"
         name="frenet_optimal_trajectory_node" output="screen">
-    <!-- Detect early enough that the lateral maneuver (mint..maxt below)
-         has room to ramp up smoothly before the obstacle is reached,
-         instead of a late, sharp swerve. -->
+    <!-- 走行可能領域チェック。FOT本体は境界を知らないので、生成後にコース外の
+         経路を棄却する。false にすると壁に突っ込むので実車では変更しないこと -->
+    <param name="enable_drivable_area_check" value="true"/>
+    <!-- 参照ライン各点の左右余裕。scripts/generate_track_width.py で生成し、
+         起動時に実際の参照ラインと照合する（不一致なら回避を停止） -->
+    <param name="track_width_csv" value="$(var track_width_csv)"/>
+    <!-- 車両幅 1.30m の半分 -->
+    <param name="vehicle_half_width" value="0.65"/>
+    <!-- 車線境界と実際の壁の差＋斜め姿勢時の車体の張り出し分 -->
+    <param name="drivable_area_margin" value="0.2"/>
+    <param name="track_width_match_tolerance" value="0.5"/>
+
+    <!-- 早めに検知して滑らかに寄せるため（直前だと急ハンドルになる） -->
     <param name="avoid_distance_threshold" value="15.0"/>
-    <!-- Other vehicle's own half-width (~0.65m, racing_kart_description)
-         plus a small margin, not a second full-width inflation. -->
+    <!-- 相手車の半幅 0.65m ＋ 余裕。自車幅を二重に足さない -->
     <param name="obstacle_clearance" value="0.6"/>
-    <!-- Must comfortably exceed maxt * (max_speed + d_t_s*n_s_sample) below
-         (5.0 * 16.0 = 80m), otherwise long/fast candidates need spline
-         points beyond what's supplied and get extrapolated: a likely
-         contributor to a bad path seen at a hairpin turn. -->
+    <!-- maxt * (max_speed + d_t_s * n_s_sample) より大きくする。足りないと
+         スプラインが外挿になり経路が壊れる（ノード側でも下限を補正） -->
     <param name="waypoint_lookahead_distance" value="32.0"/>
     <param name="waypoint_lookbehind_points" value="5"/>
-    <!-- Reject a candidate whose first point isn't within this distance of
-         the ego's actual position (safety net against a bad local spline
-         fit / Frenet projection). -->
+    <!-- 経路の始点が自車からこれ以上離れていたら棄却。
+         局所スプライン／Frenet投影の失敗に対する安全網 -->
     <param name="max_start_position_error" value="2.0"/>
 
     <param name="max_speed" value="15.0"/>
     <param name="max_accel" value="5.0"/>
-    <!-- tan(max_steer_angle 0.64 rad) / wheel_base 1.087 m, from
-         racing_kart_description/config/vehicle_info.param.yaml -->
+    <!-- tan(最大舵角 0.64 rad) / ホイールベース 1.087m -->
     <param name="max_curvature" value="0.7"/>
-    <!-- This hyperparameter has no notion of track boundary: the planner
-         will happily use the full width if an obstacle seems to demand it,
-         so keep it conservative until it can be checked against real
-         per-point track width (a wider value let a candidate swing off the
-         track at a hairpin turn during testing). A single obstacle needing
-         more room than this simply won't find a feasible avoidance path
-         (falls back to the reference trajectory) rather than swerving too
-         far: prefer that over risking going off-track. -->
+    <!-- 横方向のサンプリング範囲。上の走行可能領域チェックが最終防衛線に
+         なったので、安全パラメータではなく探索範囲として調整してよい -->
     <param name="max_road_width_l" value="1.5"/>
     <param name="max_road_width_r" value="1.5"/>
     <param name="d_road_w" value="0.5"/>
     <param name="dt" value="0.1"/>
-    <!-- Upper bound on how long/far a single maneuver may run (maxt * a
-         sampled speed, up to ~32m at max_speed). Kept separate from
-         avoid_distance_threshold on purpose: that controls how early we
-         *notice* an obstacle, this controls how far a chosen maneuver is
-         allowed to *reach*. A longer maxt (5.0, tried earlier) let the
-         low kv/kt cost weights below pick a ~80m, multi-corner "smooth"
-         detour that actually snaked into an unrelated hairpin further
-         down the track; even 3.0/1.5 (~48m) was judged still a bit long.
-         Shortening maxt keeps a maneuver local to the obstacle that
-         triggered it regardless of how early it was seen. -->
+    <!-- 1回の回避動作が届く上限（maxt × 速度）。長くすると無関係な先の
+         コーナーまで回り込む経路が選ばれる -->
     <param name="maxt" value="1.0"/>
     <param name="mint" value="0.5"/>
     <param name="d_t_s" value="1.0"/>
     <param name="n_s_sample" value="1.0"/>
     <param name="kd" value="1.0"/>
-    <!-- Low lateral-velocity cost (matches upstream demo's kv=0.1) so the
-         planner isn't penalized for starting the lateral shift promptly. -->
+    <!-- 横速度のコスト。低くして寄せ始めが遅れないようにする -->
     <param name="kv" value="0.1"/>
     <param name="ka" value="0.1"/>
     <param name="kj" value="0.1"/>

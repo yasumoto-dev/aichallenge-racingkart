@@ -5,7 +5,7 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-set(EFOT_SRC thirdparty/erdos_fot/src)
+set(EFOT_SRC src)
 
 include_directories(
   ${EFOT_SRC}
@@ -16,10 +16,13 @@ include_directories(
   ${EFOT_SRC}/Car
 )
 
-# Vendored from https://github.com/erdos-project/frenet_optimal_trajectory_planner
-# (commit ba0cb5662a0e2ea668b1c2b2951c0f6b84f44f5b, Apache-2.0). Only the
-# algorithm core is built here; the Qt-based visualizer (main.cpp/anytime.cpp)
-# and the Anytime planner are not needed and are excluded.
+# Everything under src/ is vendored from
+# https://github.com/erdos-project/frenet_optimal_trajectory_planner
+# (commit ba0cb5662a0e2ea668b1c2b2951c0f6b84f44f5b, Apache-2.0; the repository
+# root LICENSE is the same Apache-2.0 text),
+# with local patches marked in place. Only the algorithm core is built here;
+# the Qt-based visualizer (main.cpp/anytime.cpp) and the Anytime planner are
+# not needed and are excluded.
 add_library(FrenetOptimalTrajectory SHARED
   ${EFOT_SRC}/utils.h
   ${EFOT_SRC}/Polynomials/QuarticPolynomial.cpp
@@ -56,8 +59,17 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(PROGRAMS
+  scripts/generate_track_width.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# data/ holds the per-track drivable width tables consumed at runtime;
+# regenerate with scripts/generate_track_width.py whenever the map or the
+# raceline changes.
 install(DIRECTORY
   launch
+  data
   DESTINATION share/${PROJECT_NAME}
 )
 
@@ -67,6 +79,7 @@ if(BUILD_TESTING)
 
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(test_run_fot test/test_run_fot.py)
+  ament_add_pytest_test(test_drivable_area test/test_drivable_area.py)
 endif()
 
 ament_package()

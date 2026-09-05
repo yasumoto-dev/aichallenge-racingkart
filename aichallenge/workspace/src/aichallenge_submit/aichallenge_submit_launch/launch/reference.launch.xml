@@ -133,7 +133,10 @@
             <param name="z" value="6.5"/>
       </node>
 
-      <include file="$(find-pkg-share frenet_optimal_trajectory_planner)/launch/frenet_optimal_trajectory_planner.launch.xml"/>
+      <include file="$(find-pkg-share frenet_optimal_trajectory_planner)/launch/frenet_optimal_trajectory_planner.launch.xml">
+        <!-- Selects the track width table matching the raceline above. -->
+        <arg name="track_subdir" value="$(var track_subdir)"/>
+      </include>
 
     </group>
   </group>
