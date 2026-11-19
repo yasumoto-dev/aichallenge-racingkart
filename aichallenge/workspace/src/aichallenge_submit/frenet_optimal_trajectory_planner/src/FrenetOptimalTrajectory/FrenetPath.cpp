@@ -62,18 +62,22 @@ bool FrenetPath::to_global_path(CubicSpline2D* csp) {
 // Validate the calculated frenet paths against threshold speed, acceleration,
 // curvature and collision checks
 bool FrenetPath::is_valid_path(const vector<Obstacle *> obstacles) {
+    // Local patch: upstream took the elements as `int`, truncating every
+    // value toward zero. Curvatures are all < 1 1/m, so the max_curvature
+    // check (0.7) could never fire and speed/accel limits were off by up to
+    // 1. Compare the actual doubles.
     if (any_of(s_d.begin(), s_d.end(),
-            [this](int i){return abs(i) > fot_hp->max_speed;})) {
+            [this](double v){return std::fabs(v) > fot_hp->max_speed;})) {
         return false;
     }
     // max accel check
     else if (any_of(s_dd.begin(), s_dd.end(),
-            [this](int i){return abs(i) > fot_hp->max_accel;})) {
+            [this](double v){return std::fabs(v) > fot_hp->max_accel;})) {
         return false;
     }
     // max curvature check
     else if (any_of(c.begin(), c.end(),
-            [this](int i){return abs(i) > fot_hp->max_curvature;})) {
+            [this](double v){return std::fabs(v) > fot_hp->max_curvature;})) {
         return false;
     }
     // collision check

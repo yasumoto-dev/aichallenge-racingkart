@@ -11,7 +11,6 @@ import os
 from ctypes import CDLL, POINTER, byref, c_double, c_int
 
 import numpy as np
-from ament_index_python.packages import get_package_prefix
 
 from frenet_optimal_trajectory_planner.py_cpp_struct import (
     FrenetHyperparameters,
@@ -19,12 +18,19 @@ from frenet_optimal_trajectory_planner.py_cpp_struct import (
     FrenetReturnValues,
 )
 
-_LIB_PATH = os.path.join(
-    get_package_prefix("frenet_optimal_trajectory_planner"),
-    "lib",
-    "frenet_optimal_trajectory_planner",
-    "libFrenetOptimalTrajectory.so",
-)
+# FOT_LIB_PATH lets offline tools (no ROS environment) load a built .so
+# directly; normally the installed one is resolved through ament_index.
+def _default_lib_path():
+    from ament_index_python.packages import get_package_prefix
+    return os.path.join(
+        get_package_prefix("frenet_optimal_trajectory_planner"),
+        "lib",
+        "frenet_optimal_trajectory_planner",
+        "libFrenetOptimalTrajectory.so",
+    )
+
+
+_LIB_PATH = os.environ.get("FOT_LIB_PATH") or _default_lib_path()
 cdll = CDLL(_LIB_PATH)
 
 _c_double_p = POINTER(c_double)

@@ -91,14 +91,23 @@ extern "C" {
         // get distance from car to spline and projection
         double s = csp->find_s(x, y, s0);
         double distance = norm(csp->calc_x(s) - x, csp->calc_y(s) - y);
-        tuple<double, double> bvec ((csp->calc_x(s) - x) / distance,
-                (csp->calc_y(s) - y) / distance);
+        // Local patch: guard the exact-on-spline case (0/0 -> NaN c_d).
+        double inv_distance = distance > 1e-9 ? 1.0 / distance : 0.0;
+        tuple<double, double> bvec ((csp->calc_x(s) - x) * inv_distance,
+                (csp->calc_y(s) - y) * inv_distance);
 
         // normal spline vector
-        double x0 = csp->calc_x(s0);
-        double y0 = csp->calc_y(s0);
-        double x1 = csp->calc_x(s0 + 2);
-        double y1 = csp->calc_y(s0 + 2);
+        // Local patch: upstream evaluated this normal at the caller-supplied
+        // s0 (the previous cycle's s, measured on a *different* local
+        // spline), so in a corner the sign of c_d and c_d_d could flip and
+        // the planned path started mirrored to the wrong side. Use the
+        // tangent at the projection s found above (calc_yaw, rather than a
+        // finite difference that can step past the spline end and get NaN).
+        double yaw_s = csp->calc_yaw(s);
+        double x0 = 0.0;
+        double y0 = 0.0;
+        double x1 = cos(yaw_s);
+        double y1 = sin(yaw_s);
 
         // unit vector orthog. to spline
         tuple<double, double> tvec (y1-y0, -(x1-x0));

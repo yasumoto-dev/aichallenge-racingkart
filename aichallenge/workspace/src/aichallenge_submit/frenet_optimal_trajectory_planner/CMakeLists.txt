@@ -61,6 +61,7 @@ install(PROGRAMS
 
 install(PROGRAMS
   scripts/generate_track_width.py
+  scripts/generate_wall_width.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -80,6 +81,7 @@ if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(test_run_fot test/test_run_fot.py)
   ament_add_pytest_test(test_drivable_area test/test_drivable_area.py)
+  ament_add_pytest_test(test_overtake_planner test/test_overtake_planner.py)
 endif()
 
 ament_package()

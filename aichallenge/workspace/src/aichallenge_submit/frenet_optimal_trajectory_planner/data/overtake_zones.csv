@@ -1,0 +1,21 @@
+# Overtaking zones for raceline_awsim_30km_from_garage.csv (citycircuit).
+#
+# Each row is a stretch of the raceline, given as raceline waypoint indices
+# (the row numbers of the raceline CSV, 0-based; the lap loop is waypoints
+# 12..130, and 130 is the same point as 12). Overtaking may only START when
+# the ego is inside a zone AND the whole pass is predicted to finish before
+# the zone ends; elsewhere the kart follows the one ahead (ACC).
+# Edit freely -- this is meant to be tuned by a human.
+#
+# Initial values were chosen from data/track_width.csv: nearly straight
+# (|curvature| < ~0.1 1/m) and one side keeps >= 2.65 m of lane width
+# (1.8 m passing offset + 0.65 m half width + 0.2 m margin) throughout.
+#   14-27  : back straight, room on the RIGHT (~37 m)
+#   33-42  : straight after the first hairpin, room on the LEFT/RIGHT (~27 m)
+#   72-79  : short straight, room on the RIGHT (~22 m)
+#   108-117: final straight, room on the LEFT (~27 m)
+start_waypoint,end_waypoint
+14,27
+33,42
+72,79
+108,117

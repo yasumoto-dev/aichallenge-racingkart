@@ -136,6 +136,7 @@
       <include file="$(find-pkg-share frenet_optimal_trajectory_planner)/launch/frenet_optimal_trajectory_planner.launch.xml">
         <!-- Selects the track width table matching the raceline above. -->
         <arg name="track_subdir" value="$(var track_subdir)"/>
+        <arg name="use_sim_time" value="$(var use_sim_time)"/>
       </include>
 
     </group>

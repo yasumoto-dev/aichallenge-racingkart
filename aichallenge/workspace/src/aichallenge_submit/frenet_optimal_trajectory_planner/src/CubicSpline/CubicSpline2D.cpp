@@ -122,5 +122,9 @@ bool CubicSpline2D::are_collinear(double x1, double y1, double x2, double y2,
     double a = x1 * (y2 - y3) +
                x2 * (y3 - y1) +
                x3 * (y1 - y2);
-    return a <= 0.01;
+    // Local patch: `a` is a *signed* (doubled) area, so the upstream
+    // `a <= 0.01` treated every turn of one handedness as "collinear" and
+    // deleted it -- 79 of 128 raceline waypoints were dropped and the local
+    // spline cut corners by several metres. Only |a| measures collinearity.
+    return std::fabs(a) <= 0.01;
 }

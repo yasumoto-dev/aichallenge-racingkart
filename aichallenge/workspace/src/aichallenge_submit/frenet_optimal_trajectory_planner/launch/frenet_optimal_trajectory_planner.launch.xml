@@ -4,55 +4,97 @@
   <arg name="input_v2x_topic" default="/v2x/vehicle_positions"/>
   <arg name="input_kinematics_topic" default="/localization/kinematic_state"/>
   <arg name="output_trajectory_avoidance_topic" default="/planning/scenario_planning/trajectory_avoidance"/>
+  <arg name="use_sim_time" default="false"/>
   <!-- reference.launch.xml と同じ規約。citycircuit は data/、kashiwanoha は data/kashiwanoha/ -->
   <arg name="track_subdir" default=""/>
   <arg name="track_width_csv"
        default="$(find-pkg-share frenet_optimal_trajectory_planner)/data/$(var track_subdir)track_width.csv"/>
+  <arg name="wall_width_csv"
+       default="$(find-pkg-share frenet_optimal_trajectory_planner)/data/$(var track_subdir)track_width_walls.csv"/>
+  <!-- 追い越し可能区間（レースラインの waypoint 番号の範囲）。人が編集する前提。
+       空にすると追い越しは一切せず、前の車に追従するだけになる -->
+  <arg name="overtake_zones_csv"
+       default="$(find-pkg-share frenet_optimal_trajectory_planner)/data/$(var track_subdir)overtake_zones.csv"/>
 
   <node pkg="frenet_optimal_trajectory_planner" exec="frenet_optimal_trajectory_node.py"
         name="frenet_optimal_trajectory_node" output="screen">
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
     <!-- 走行可能領域チェック。FOT本体は境界を知らないので、生成後にコース外の
          経路を棄却する。false にすると壁に突っ込むので実車では変更しないこと -->
     <param name="enable_drivable_area_check" value="true"/>
-    <!-- 参照ライン各点の左右余裕。scripts/generate_track_width.py で生成し、
-         起動時に実際の参照ラインと照合する（不一致なら回避を停止） -->
     <param name="track_width_csv" value="$(var track_width_csv)"/>
+    <param name="track_width_match_tolerance" value="0.5"/>
+    <!-- 占有格子地図の壁から測った幅（scripts/generate_wall_width.py）。
+         lanelet より壁が最大0.8m内側の箇所があるため、小さい方を使う -->
+    <param name="wall_width_csv" value="$(var wall_width_csv)"/>
+    <param name="overtake_zones_csv" value="$(var overtake_zones_csv)"/>
+    <param name="planning_rate" value="20.0"/>
+    <!-- V2X に自車が含まれていても障害物にしないため -->
+    <param name="self_exclusion_radius" value="1.0"/>
+
+    <!-- ===== 車両・走行可能領域 ===== -->
+    <param name="vehicle_length" value="2.064"/>
     <!-- 車両幅 1.30m の半分 -->
     <param name="vehicle_half_width" value="0.65"/>
     <!-- 車線境界と実際の壁の差＋斜め姿勢時の車体の張り出し分 -->
     <param name="drivable_area_margin" value="0.2"/>
-    <param name="track_width_match_tolerance" value="0.5"/>
 
-    <!-- 早めに検知して滑らかに寄せるため（直前だと急ハンドルになる） -->
-    <param name="avoid_distance_threshold" value="15.0"/>
-    <!-- 相手車の半幅 0.65m ＋ 余裕。自車幅を二重に足さない -->
-    <param name="obstacle_clearance" value="0.6"/>
-    <!-- maxt * (max_speed + d_t_s * n_s_sample) より大きくする。足りないと
-         スプラインが外挿になり経路が壊れる（ノード側でも下限を補正） -->
-    <param name="waypoint_lookahead_distance" value="32.0"/>
-    <param name="waypoint_lookbehind_points" value="5"/>
-    <!-- 経路の始点が自車からこれ以上離れていたら棄却。
-         局所スプライン／Frenet投影の失敗に対する安全網 -->
+    <!-- ===== 相手車両の扱い（すべてコース沿いの距離 s で判定） ===== -->
+    <param name="detect_ahead" value="35.0"/>
+    <param name="detect_behind" value="6.0"/>
+    <!-- 中心間の横距離がこれ未満なら「進路上にいる」= 1.30 + 余裕0.30 -->
+    <param name="lateral_block" value="1.6"/>
+
+    <!-- ===== FOLLOW（追従, ACC） ===== -->
+    <!-- 停止時の車間[m] + 相手速度×time_gap -->
+    <param name="follow_gap_min" value="3.0"/>
+    <param name="follow_time_gap" value="0.5"/>
+    <param name="follow_decel" value="2.5"/>
+    <!-- simple_pure_pursuit の 1/speed_proportional_gain。減速遅れの補償 -->
+    <param name="controller_lag" value="1.0"/>
+    <!-- FOLLOW / RETURN で publish する経路の長さ（RViz の青線の長さ） -->
+    <param name="path_length" value="15.0"/>
+    <param name="follow_close_gain" value="0.4"/>
+    <param name="follow_close_max" value="1.5"/>
+
+    <!-- ===== OVERTAKE（追い越し判断） ===== -->
+    <!-- 参照速度が相手よりこれ以上速くないと追い越さない -->
+    <param name="min_speed_advantage" value="1.5"/>
+    <param name="ego_accel" value="2.5"/>
+    <!-- 相手の前に「車長＋これ」出たら追い越し完了 → RETURN -->
+    <param name="pass_done_gap" value="1.5"/>
+    <!-- 追い越し完了後、区間の終わりまでに残すべき距離（ラインへ戻る分） -->
+    <param name="zone_end_margin" value="8.0"/>
+    <!-- 追い越し中に狙う中心間の横距離（FOT の横方向サンプルはこの側だけ） -->
+    <param name="lateral_pass" value="1.8"/>
+    <param name="lateral_pass_extra" value="0.5"/>
+    <param name="max_overtake_time" value="10.0"/>
+    <param name="retry_cooldown" value="1.5"/>
+
+    <!-- ===== RETURN ===== -->
+    <param name="return_blend_min" value="10.0"/>
+    <param name="return_blend_time" value="1.2"/>
+    <param name="return_done_offset" value="0.3"/>
+
+    <!-- ===== FOT 本体 ===== -->
+    <!-- 相手車両の箱の半幅。C++ 側がさらに obstacle_clearance を足すので
+         ここに安全余裕を入れない（以前は二重加算されていた） -->
+    <param name="obstacle_half_size" value="0.45"/>
+    <param name="obstacle_clearance" value="0.25"/>
     <param name="max_start_position_error" value="2.0"/>
-
     <param name="max_speed" value="15.0"/>
     <param name="max_accel" value="5.0"/>
-    <!-- tan(最大舵角 0.64 rad) / ホイールベース 1.087m -->
+    <!-- tan(最大舵角 0.64 rad) / ホイールベース 1.087m。
+         C++ の int 切り捨てバグ修正で、今は実際に効く -->
     <param name="max_curvature" value="0.7"/>
-    <!-- 横方向のサンプリング範囲。上の走行可能領域チェックが最終防衛線に
-         なったので、安全パラメータではなく探索範囲として調整してよい -->
-    <param name="max_road_width_l" value="1.5"/>
-    <param name="max_road_width_r" value="1.5"/>
-    <param name="d_road_w" value="0.5"/>
+    <param name="d_road_w" value="0.25"/>
     <param name="dt" value="0.1"/>
-    <!-- 1回の回避動作が届く上限（maxt × 速度）。長くすると無関係な先の
-         コーナーまで回り込む経路が選ばれる -->
-    <param name="maxt" value="1.0"/>
-    <param name="mint" value="0.5"/>
+    <!-- 横移動にかける時間の範囲。maxt=1.0 だと避け始めが 6m 手前と遅すぎた -->
+    <param name="maxt" value="2.0"/>
+    <param name="mint" value="1.0"/>
     <param name="d_t_s" value="1.0"/>
     <param name="n_s_sample" value="1.0"/>
     <param name="kd" value="1.0"/>
-    <!-- 横速度のコスト。低くして寄せ始めが遅れないようにする -->
     <param name="kv" value="0.1"/>
     <param name="ka" value="0.1"/>
     <param name="kj" value="0.1"/>
